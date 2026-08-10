@@ -1,0 +1,102 @@
+// Prisma schema — Postgres, pointed at a hosted instance via DATABASE_URL
+// (e.g. Render's managed Postgres). No SQLite-specific syntax is used
+// anywhere below, so this schema is portable to any Postgres host.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  passwordHash    String
+  displayName     String?
+  createdAt       DateTime         @default(now())
+  collectionItems CollectionItem[]
+}
+
+// Cached metadata about a specific printed card, keyed to the pokemontcg.io
+// catalog where possible so repeated scans of the same card reuse one row.
+model CardCache {
+  id               String           @id @default(uuid())
+  pokemonTcgIoId   String?          @unique
+  name             String
+  set              String
+  setId            String?
+  cardNumber       String
+  totalInSet       String?
+  rarity           String
+  cardType         String
+  imageUrl         String?
+  createdAt        DateTime         @default(now())
+  collectionItems  CollectionItem[]
+  scans            Scan[]
+}
+
+model CollectionItem {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  cardId          String
+  card            CardCache @relation(fields: [cardId], references: [id])
+
+  frontImageUrl   String
+  backImageUrl    String
+
+  condition       String // "Raw" | "Graded"
+  gradingCompany  String? // PSA | TAG | BGS | CGC
+  certNumber      String?
+
+  language        String
+  holoType        String
+  variant         String?
+  isPromo         Boolean   @default(false)
+  isFirstEdition  Boolean   @default(false)
+
+  purchasePrice   Float?
+  purchaseDate    DateTime?
+  notes           String?
+
+  latestGradeJson String? // most recent GradingResult, cached for fast reads
+  latestPriceJson String? // most recent PricingResult, cached for fast reads
+
+  dateScanned     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  scans           Scan[]
+  priceSnapshots  PriceSnapshot[]
+}
+
+model Scan {
+  id                   String          @id @default(uuid())
+  collectionItemId     String?
+  collectionItem       CollectionItem? @relation(fields: [collectionItemId], references: [id])
+  cardId               String?
+  card                 CardCache?      @relation(fields: [cardId], references: [id])
+
+  frontImageUrl        String
+  backImageUrl         String
+
+  frontQualityJson     String
+  backQualityJson      String
+  identificationJson   String
+  gradingJson          String
+  pricingJson          String
+
+  overallGrade         Float
+
+  createdAt            DateTime        @default(now())
+}
+
+model PriceSnapshot {
+  id                String         @id @default(uuid())
+  collectionItemId  String
+  collectionItem    CollectionItem @relation(fields: [collectionItemId], references: [id])
+  estimatedValue    Float
+  createdAt         DateTime       @default(now())
+}

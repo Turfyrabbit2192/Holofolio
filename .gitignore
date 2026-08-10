@@ -1,0 +1,29 @@
+node_modules/
+.DS_Store
+*.log
+
+# personal editor/tooling config, not project source
+.claude/
+apps/mobile/.claude/
+
+# secrets — never commit real API keys/credentials
+.env
+.env.*
+!.env.example
+
+# local SQLite dev database / local-disk image fallback
+server/prisma/*.db
+server/prisma/*.db-journal
+server/uploads/
+
+# build output
+server/dist/
+packages/*/dist/
+apps/mobile/dist/
+
+# Expo / native tooling
+.expo/
+.expo-shared/
+*.orig.*
+apps/mobile/android/
+apps/mobile/ios/
