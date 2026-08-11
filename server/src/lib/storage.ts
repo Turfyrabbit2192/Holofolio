@@ -3,45 +3,46 @@ import path from "path";
 import sharp from "sharp";
 import { v4 as uuid } from "uuid";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { env, isR2Configured } from "../env";
+import { env, isSupabaseStorageConfigured } from "../env";
 
-let r2Client: S3Client | null = null;
-function getR2Client(): S3Client {
-  if (!r2Client) {
-    r2Client = new S3Client({
-      region: "auto",
-      endpoint: `https://${env.r2AccountId}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId: env.r2AccessKeyId, secretAccessKey: env.r2SecretAccessKey },
+let s3Client: S3Client | null = null;
+function getS3Client(): S3Client {
+  if (!s3Client) {
+    s3Client = new S3Client({
+      forcePathStyle: true,
+      region: "us-east-1", // Supabase's S3-compatible API accepts this regardless of the project's actual region
+      endpoint: `https://${env.supabaseProjectRef}.storage.supabase.co/storage/v1/s3`,
+      credentials: { accessKeyId: env.supabaseS3AccessKeyId, secretAccessKey: env.supabaseS3SecretAccessKey },
     });
   }
-  return r2Client;
+  return s3Client;
 }
 
 /**
  * Saves a scanned card photo and returns its publicly-reachable URL.
  *
- * Uses Cloudflare R2 (S3-compatible object storage) when configured, since
+ * Uses Supabase Storage (via its S3-compatible API) when configured, since
  * most hosting platforms wipe local disk on every redeploy/restart —
- * without R2, saved collection photos would disappear the next time the
- * server restarts. Falls back to local disk (served from /uploads) when R2
- * credentials aren't set, so local development keeps working without
- * requiring an R2 account.
+ * without it, saved collection photos would disappear the next time the
+ * server restarts. Falls back to local disk (served from /uploads) when
+ * Supabase credentials aren't set, so local development keeps working
+ * without requiring a Supabase project.
  */
 export async function saveImage(buffer: Buffer, subdir: "originals" | "processed"): Promise<string> {
   const filename = `${uuid()}.jpg`;
   const jpeg = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
 
-  if (isR2Configured()) {
+  if (isSupabaseStorageConfigured()) {
     const key = `${subdir}/${filename}`;
-    await getR2Client().send(
+    await getS3Client().send(
       new PutObjectCommand({
-        Bucket: env.r2BucketName,
+        Bucket: env.supabaseStorageBucket,
         Key: key,
         Body: jpeg,
         ContentType: "image/jpeg",
       })
     );
-    return `${env.r2PublicUrlBase}/${key}`;
+    return `https://${env.supabaseProjectRef}.supabase.co/storage/v1/object/public/${encodeURIComponent(env.supabaseStorageBucket)}/${key}`;
   }
 
   const dir = path.join(env.uploadDir, subdir);

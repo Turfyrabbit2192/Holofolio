@@ -1,16 +1,12 @@
-# Render Blueprint — deploys the Holofolio API + a managed Postgres.
+# Render Blueprint — deploys the Holofolio API. Database + image storage are
+# both on Supabase (Postgres + S3-compatible Storage), not Render-managed.
+#
 # Push this repo to GitHub, then in the Render dashboard: New > Blueprint,
 # point it at the repo, and Render reads this file automatically.
 #
 # Commands run from the REPO ROOT (not server/) on purpose — this is an npm
 # workspaces monorepo, and `npm install` has to run at the root for the
 # server's workspace dependency on packages/shared to symlink correctly.
-databases:
-  - name: holofolio-db
-    plan: free
-    databaseName: holofolio
-    user: holofolio
-
 services:
   - type: web
     name: holofolio-api
@@ -21,16 +17,14 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
-      - key: DATABASE_URL
-        fromDatabase:
-          name: holofolio-db
-          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       # Everything below needs a real value pasted into the Render
       # dashboard (Environment tab) after the first deploy — `sync: false`
       # just tells Render not to expect a value in this file (so no secrets
       # end up committed to the repo).
+      - key: DATABASE_URL
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: POKEMONTCG_IO_API_KEY
@@ -45,13 +39,11 @@ services:
         sync: false
       - key: COLLECTR_API_KEY
         sync: false
-      - key: R2_ACCOUNT_ID
+      - key: SUPABASE_PROJECT_REF
         sync: false
-      - key: R2_ACCESS_KEY_ID
+      - key: SUPABASE_S3_ACCESS_KEY_ID
         sync: false
-      - key: R2_SECRET_ACCESS_KEY
+      - key: SUPABASE_S3_SECRET_ACCESS_KEY
         sync: false
-      - key: R2_BUCKET_NAME
-        sync: false
-      - key: R2_PUBLIC_URL_BASE
+      - key: SUPABASE_STORAGE_BUCKET
         sync: false
